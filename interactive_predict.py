@@ -6,7 +6,7 @@ from extractor import Extractor
 SHOW_TOP_CONTEXTS = 10
 MAX_PATH_LENGTH = 8
 MAX_PATH_WIDTH = 2
-JAR_PATH = 'JavaExtractor/JPredict/target/JavaExtractor-0.0.1-SNAPSHOT.jar'
+JAR_PATH = 'astminer/shadow/lib-0.6.jar'
 
 
 class InteractivePredictor:
@@ -36,7 +36,8 @@ class InteractivePredictor:
                 print('Exiting...')
                 return
             try:
-                predict_lines, hash_to_string_dict = self.path_extractor.extract_paths(input_filename)
+                predict_lines, hash_to_string_dict = self.path_extractor.extract_paths(
+                    input_filename)
             except ValueError as e:
                 print(e)
                 continue
@@ -47,11 +48,12 @@ class InteractivePredictor:
             for raw_prediction, method_prediction in zip(raw_prediction_results, method_prediction_results):
                 print('Original name:\t' + method_prediction.original_name)
                 for name_prob_pair in method_prediction.predictions:
-                    print('\t(%f) predicted: %s' % (name_prob_pair['probability'], name_prob_pair['name']))
+                    print('\t(%f) predicted: %s' %
+                          (name_prob_pair['probability'], name_prob_pair['name']))
                 print('Attention:')
                 for attention_obj in method_prediction.attention_paths:
                     print('%f\tcontext: %s,%s,%s' % (
-                    attention_obj['score'], attention_obj['token1'], attention_obj['path'], attention_obj['token2']))
+                        attention_obj['score'], attention_obj['token1'], attention_obj['path'], attention_obj['token2']))
                 if self.config.EXPORT_CODE_VECTORS:
                     print('Code vector:')
                     print(' '.join(map(str, raw_prediction.code_vector)))

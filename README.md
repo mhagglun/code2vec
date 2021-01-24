@@ -1,3 +1,9 @@
+# This fork of [code2vec](https://github.com/tech-srl/code2vec) aims to add support for learning distributed representations of python3 source code.
+
+- Added support for mining Python/Java/C/C++/Javascript ASTs with [JetBrains astminer](https://github.com/JetBrains-Research/astminer)
+
+
+
 # Code2vec
 A neural network for learning distributed representations of code.
 This is an official implementation of the model described in:
@@ -58,7 +64,7 @@ On Ubuntu:
 ## Quickstart
 ### Step 0: Cloning this repository
 ```
-git clone https://github.com/tech-srl/code2vec
+git clone https://github.com/mhagglun/code2vec
 cd code2vec
 ```
 

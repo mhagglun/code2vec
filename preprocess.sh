@@ -21,31 +21,33 @@
 TRAIN_DIR=my_train_dir
 VAL_DIR=my_val_dir
 TEST_DIR=my_test_dir
-DATASET_NAME=my_dataset
+DATASET_NAME=python_dataset
+LANG=py
 MAX_CONTEXTS=200
 WORD_VOCAB_SIZE=1301136
 PATH_VOCAB_SIZE=911417
 TARGET_VOCAB_SIZE=261245
-NUM_THREADS=64
 PYTHON=python3
+JAVA=java
 ###########################################################
-
-TRAIN_DATA_FILE=${DATASET_NAME}.train.raw.txt
-VAL_DATA_FILE=${DATASET_NAME}.val.raw.txt
-TEST_DATA_FILE=${DATASET_NAME}.test.raw.txt
-EXTRACTOR_JAR=JavaExtractor/JPredict/target/JavaExtractor-0.0.1-SNAPSHOT.jar
 
 mkdir -p data
 mkdir -p data/${DATASET_NAME}
 
+TRAIN_DATA_FILE=data/${DATASET_NAME}/train
+VAL_DATA_FILE=data/${DATASET_NAME}/val
+TEST_DATA_FILE=data/${DATASET_NAME}/test
+EXTRACTOR_JAR=astminer/shadow/lib-0.6.jar
+
+
 echo "Extracting paths from validation set..."
-${PYTHON} JavaExtractor/extract.py --dir ${VAL_DIR} --max_path_length 8 --max_path_width 2 --num_threads ${NUM_THREADS} --jar ${EXTRACTOR_JAR} > ${VAL_DATA_FILE}
+${JAVA} -jar ${EXTRACTOR_JAR} code2vec --lang ${LANG} --project ${VAL_DIR} --output ${VAL_DATA_FILE} --maxL 8 --maxW 2 --maxContexts ${MAX_CONTEXTS} --maxTokens ${WORD_VOCAB_SIZE} --maxPaths ${PATH_VOCAB_SIZE} --split-tokens --granularity method
 echo "Finished extracting paths from validation set"
 echo "Extracting paths from test set..."
-${PYTHON} JavaExtractor/extract.py --dir ${TEST_DIR} --max_path_length 8 --max_path_width 2 --num_threads ${NUM_THREADS} --jar ${EXTRACTOR_JAR} > ${TEST_DATA_FILE}
+${JAVA} -jar ${EXTRACTOR_JAR} code2vec --lang ${LANG} --project ${TEST_DIR} --output ${TEST_DATA_FILE} --maxL 8 --maxW 2 --maxContexts ${MAX_CONTEXTS} --maxTokens ${WORD_VOCAB_SIZE} --maxPaths ${PATH_VOCAB_SIZE} --split-tokens --granularity method
 echo "Finished extracting paths from test set"
 echo "Extracting paths from training set..."
-${PYTHON} JavaExtractor/extract.py --dir ${TRAIN_DIR} --max_path_length 8 --max_path_width 2 --num_threads ${NUM_THREADS} --jar ${EXTRACTOR_JAR} | shuf > ${TRAIN_DATA_FILE}
+${JAVA} -jar ${EXTRACTOR_JAR} code2vec --lang ${LANG} --project ${TRAIN_DIR} --output ${TRAIN_DATA_FILE} --maxL 8 --maxW 2 --maxContexts ${MAX_CONTEXTS} --maxTokens ${WORD_VOCAB_SIZE} --maxPaths ${PATH_VOCAB_SIZE} --split-tokens --granularity method
 echo "Finished extracting paths from training set"
 
 TARGET_HISTOGRAM_FILE=data/${DATASET_NAME}/${DATASET_NAME}.histo.tgt.c2v
@@ -53,17 +55,17 @@ ORIGIN_HISTOGRAM_FILE=data/${DATASET_NAME}/${DATASET_NAME}.histo.ori.c2v
 PATH_HISTOGRAM_FILE=data/${DATASET_NAME}/${DATASET_NAME}.histo.path.c2v
 
 echo "Creating histograms from the training data"
-cat ${TRAIN_DATA_FILE} | cut -d' ' -f1 | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${TARGET_HISTOGRAM_FILE}
-cat ${TRAIN_DATA_FILE} | cut -d' ' -f2- | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${ORIGIN_HISTOGRAM_FILE}
-cat ${TRAIN_DATA_FILE} | cut -d' ' -f2- | tr ' ' '\n' | cut -d',' -f2 | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${PATH_HISTOGRAM_FILE}
+cat ${TRAIN_DATA_FILE}/${LANG}/path_contexts.csv | cut -d' ' -f1 | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${TARGET_HISTOGRAM_FILE}
+cat ${TRAIN_DATA_FILE}/${LANG}/path_contexts.csv | cut -d' ' -f2- | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${ORIGIN_HISTOGRAM_FILE}
+cat ${TRAIN_DATA_FILE}/${LANG}/path_contexts.csv | cut -d' ' -f2- | tr ' ' '\n' | cut -d',' -f2 | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${PATH_HISTOGRAM_FILE}
 
-${PYTHON} preprocess.py --train_data ${TRAIN_DATA_FILE} --test_data ${TEST_DATA_FILE} --val_data ${VAL_DATA_FILE} \
+${PYTHON} preprocess.py --train_data ${TRAIN_DATA_FILE}/${LANG}/path_contexts.csv --test_data ${TEST_DATA_FILE}/${LANG}/path_contexts.csv --val_data ${VAL_DATA_FILE}/${LANG}/path_contexts.csv \
   --max_contexts ${MAX_CONTEXTS} --word_vocab_size ${WORD_VOCAB_SIZE} --path_vocab_size ${PATH_VOCAB_SIZE} \
   --target_vocab_size ${TARGET_VOCAB_SIZE} --word_histogram ${ORIGIN_HISTOGRAM_FILE} \
   --path_histogram ${PATH_HISTOGRAM_FILE} --target_histogram ${TARGET_HISTOGRAM_FILE} --output_name data/${DATASET_NAME}/${DATASET_NAME}
-    
+
 # If all went well, the raw data files can be deleted, because preprocess.py creates new files 
 # with truncated and padded number of paths for each example.
-rm ${TRAIN_DATA_FILE} ${VAL_DATA_FILE} ${TEST_DATA_FILE} ${TARGET_HISTOGRAM_FILE} ${ORIGIN_HISTOGRAM_FILE} \
+rm -rf ${TRAIN_DATA_FILE} ${VAL_DATA_FILE} ${TEST_DATA_FILE} ${TARGET_HISTOGRAM_FILE} ${ORIGIN_HISTOGRAM_FILE} \
   ${PATH_HISTOGRAM_FILE}
 
