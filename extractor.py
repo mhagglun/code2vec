@@ -1,4 +1,4 @@
-import subprocess
+import os
 
 
 class Extractor:
@@ -9,14 +9,9 @@ class Extractor:
         self.jar_path = jar_path
 
     def extract_paths(self, path):
-        command = ['java', '-cp', self.jar_path, 'JavaExtractor.App', '--max_path_length',
-                   str(self.max_path_length), '--max_path_width', str(self.max_path_width), '--file', path, '--no_hash']
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = process.communicate()
-        output = out.decode().splitlines()
-        if len(output) == 0:
-            err = err.decode()
-            raise ValueError(err)
+        command = f"java -jar astminer/shadow/lib-0.6.jar code2vec --lang py --project {path} --output predictions --maxL 8 --maxW 2"
+        os.system(command)
+        output = open('predictions/py/path_contexts.csv', 'r')
         hash_to_string_dict = {}
         result = []
         for i, line in enumerate(output):
@@ -31,7 +26,8 @@ class Extractor:
                 context_word2 = context_parts[2]
                 hashed_path = str(self.java_string_hashcode(context_path))
                 hash_to_string_dict[hashed_path] = context_path
-                current_result_line_parts += ['%s,%s,%s' % (context_word1, hashed_path, context_word2)]
+                current_result_line_parts += ['%s,%s,%s' %
+                                              (context_word1, hashed_path, context_word2)]
             space_padding = ' ' * (self.config.MAX_CONTEXTS - len(contexts))
             result_line = ' '.join(current_result_line_parts) + space_padding
             result.append(result_line)
