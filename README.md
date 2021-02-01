@@ -145,10 +145,16 @@ While evaluating, a file named "log.txt" is written with each test example name 
 ### Step 4: Manual examination of a trained model
 To manually examine a trained model, run:
 ```
-python3 code2vec.py --load models/java14_model/saved_model_iter8.release --predict
+./predict.sh model_name
 ```
-After the model loads, follow the instructions and edit the file [Input.java](Input.java) and enter a Java 
+After the model loads, follow the instructions and edit the file [Input.py](Input.py) and enter a Python 
 method or code snippet, and examine the model's predictions and attention scores.
+
+### Step 5: Extract code vectors from testset
+To export the code vectors for the test set,run the `export_code_vectors.sh` script and pass the model and dataset names as arguments.
+```
+./export_code_vectors.sh model_name dataset_name
+```
 
 ## Configuration
 Changing hyper-parameters is possible by editing the file
