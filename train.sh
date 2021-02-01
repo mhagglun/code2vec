@@ -6,7 +6,7 @@
 # test_data: by default, points to the validation set, since this is the set that
 #   will be evaluated after each training iteration. If you wish to test
 #   on the final (held-out) test set, change 'val' to 'test'.
-type=python_small
+type=python_model
 dataset_name=python_dataset
 data_dir=data/${dataset_name}
 data=${data_dir}/${dataset_name}
@@ -15,4 +15,4 @@ model_dir=models/${type}
 
 mkdir -p ${model_dir}
 set -e
-python3 -u code2vec.py --framework keras --data ${data} --test ${test_data} --save ${model_dir}/saved_model
+python3 -u code2vec.py -tb --data ${data} --test ${test_data} --save ${model_dir}/saved_model
