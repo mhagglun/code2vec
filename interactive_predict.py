@@ -27,6 +27,7 @@ class InteractivePredictor:
 
     def predict(self):
         input_filename = 'Input.py'
+        lang = 'py'
         print('Starting interactive prediction...')
         while True:
             print(
@@ -37,7 +38,7 @@ class InteractivePredictor:
                 return
             try:
                 predict_lines, hash_to_string_dict = self.path_extractor.extract_paths(
-                    input_filename)
+                    input_filename, lang)
             except ValueError as e:
                 print(e)
                 continue

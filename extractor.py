@@ -8,10 +8,10 @@ class Extractor:
         self.max_path_width = max_path_width
         self.jar_path = jar_path
 
-    def extract_paths(self, path):
-        command = f"java -jar astminer/shadow/lib-0.6.jar code2vec --lang py --project {path} --output predictions --maxL 8 --maxW 2"
+    def extract_paths(self, path, lang):
+        command = f"java -jar astminer/shadow/lib-0.6.jar code2vec --lang {lang} --project {path} --output predictions --maxL 8 --maxW 2"
         os.system(command)
-        output = open('predictions/py/path_contexts.csv', 'r')
+        output = open(f"predictions/{lang}/path_contexts.csv", 'r')
         hash_to_string_dict = {}
         result = []
         for i, line in enumerate(output):
