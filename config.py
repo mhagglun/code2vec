@@ -45,21 +45,24 @@ class Config:
 
     def set_defaults(self):
         self.NUM_TRAIN_EPOCHS = 20
-        self.SAVE_EVERY_EPOCHS = 1
-        self.TRAIN_BATCH_SIZE = 1024
+        self.SAVE_EVERY_EPOCHS = 2
+        self.TRAIN_BATCH_SIZE = 128
         self.TEST_BATCH_SIZE = self.TRAIN_BATCH_SIZE
         self.TOP_K_WORDS_CONSIDERED_DURING_PREDICTION = 10
         self.NUM_BATCHES_TO_LOG_PROGRESS = 100
-        self.NUM_TRAIN_BATCHES_TO_EVALUATE = 1800
-        self.READER_NUM_PARALLEL_BATCHES = 6  # cpu cores [for tf.contrib.data.map_and_batch() in the reader]
+        self.NUM_TRAIN_BATCHES_TO_EVALUATE = 100
+        # cpu cores [for tf.contrib.data.map_and_batch() in the reader]
+        self.READER_NUM_PARALLEL_BATCHES = 6
         self.SHUFFLE_BUFFER_SIZE = 10000
-        self.CSV_BUFFER_SIZE = 100 * 1024 * 1024  # 100 MB
+        self.CSV_BUFFER_SIZE = 150 * 1024 * 1024  # 100 MB
         self.MAX_TO_KEEP = 10
 
         # model hyper-params
+        self.MAX_LIBRARIES = 100
+        self.MAX_LIBRARY_VOCAB_SIZE = 126797
         self.MAX_CONTEXTS = 200
         self.MAX_TOKEN_VOCAB_SIZE = 1301136
-        self.MAX_TARGET_VOCAB_SIZE = 261245
+        self.MAX_TARGET_VOCAB_SIZE = 156148
         self.MAX_PATH_VOCAB_SIZE = 911417
         self.DEFAULT_EMBEDDINGS_SIZE = 128
         self.TOKEN_EMBEDDINGS_SIZE = self.DEFAULT_EMBEDDINGS_SIZE
@@ -100,6 +103,8 @@ class Config:
         self.MAX_TO_KEEP: int = 0
 
         # model hyper-params
+        self.MAX_LIBRARIES: int = 0
+        self.MAX_LIBRARY_VOCAB_SIZE: int = 0
         self.MAX_CONTEXTS: int = 0
         self.MAX_TOKEN_VOCAB_SIZE: int = 0
         self.MAX_TARGET_VOCAB_SIZE: int = 0
@@ -174,7 +179,8 @@ class Config:
         return self.TEST_DATA_PATH if is_evaluating else self.train_data_path
 
     def batch_size(self, is_evaluating: bool = False):
-        return self.TEST_BATCH_SIZE if is_evaluating else self.TRAIN_BATCH_SIZE  # take min with NUM_TRAIN_EXAMPLES?
+        # take min with NUM_TRAIN_EXAMPLES?
+        return self.TEST_BATCH_SIZE if is_evaluating else self.TRAIN_BATCH_SIZE
 
     @property
     def train_data_path(self) -> Optional[str]:
@@ -236,7 +242,8 @@ class Config:
             raise ValueError("Model load dir `{model_load_dir}` does not exist.".format(
                 model_load_dir=self.model_load_dir))
         if self.DL_FRAMEWORK not in {'tensorflow', 'keras'}:
-            raise ValueError("config.DL_FRAMEWORK must be in {'tensorflow', 'keras'}.")
+            raise ValueError(
+                "config.DL_FRAMEWORK must be in {'tensorflow', 'keras'}.")
 
     def __iter__(self):
         for attr_name in dir(self):
@@ -257,7 +264,8 @@ class Config:
             self.__logger.handlers = []
             self.__logger.propagate = 0
 
-            formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s')
+            formatter = logging.Formatter(
+                '%(asctime)s %(levelname)-8s %(message)s')
 
             if self.VERBOSE_MODE >= 1:
                 ch = logging.StreamHandler(sys.stdout)

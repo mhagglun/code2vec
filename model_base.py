@@ -45,27 +45,37 @@ class Code2VecModelBase(abc.ABC):
             self._init_num_of_examples()
         self._log_model_configuration()
         self.vocabs = Code2VecVocabs(config)
-        self.vocabs.target_vocab.get_index_to_word_lookup_table()  # just to initialize it (if not already initialized)
+        # just to initialize it (if not already initialized)
+        self.vocabs.target_vocab.get_index_to_word_lookup_table()
         self._load_or_create_inner_model()
         self._initialize()
 
     def _log_creating_model(self):
         self.log('')
         self.log('')
-        self.log('---------------------------------------------------------------------')
-        self.log('---------------------------------------------------------------------')
-        self.log('---------------------- Creating code2vec model ----------------------')
-        self.log('---------------------------------------------------------------------')
-        self.log('---------------------------------------------------------------------')
+        self.log(
+            '---------------------------------------------------------------------')
+        self.log(
+            '---------------------------------------------------------------------')
+        self.log(
+            '---------------------- Creating code2vec model ----------------------')
+        self.log(
+            '---------------------------------------------------------------------')
+        self.log(
+            '---------------------------------------------------------------------')
 
     def _log_model_configuration(self):
-        self.log('---------------------------------------------------------------------')
-        self.log('----------------- Configuration - Hyper Parameters ------------------')
-        longest_param_name_len = max(len(param_name) for param_name, _ in self.config)
+        self.log(
+            '---------------------------------------------------------------------')
+        self.log(
+            '----------------- Configuration - Hyper Parameters ------------------')
+        longest_param_name_len = max(len(param_name)
+                                     for param_name, _ in self.config)
         for param_name, param_val in self.config:
             self.log('{name: <{name_len}}{val}'.format(
                 name=param_name, val=param_val, name_len=longest_param_name_len+2))
-        self.log('---------------------------------------------------------------------')
+        self.log(
+            '---------------------------------------------------------------------')
 
     @property
     def logger(self):
@@ -77,11 +87,15 @@ class Code2VecModelBase(abc.ABC):
     def _init_num_of_examples(self):
         self.log('Checking number of examples ...')
         if self.config.is_training:
-            self.config.NUM_TRAIN_EXAMPLES = self._get_num_of_examples_for_dataset(self.config.train_data_path)
-            self.log('    Number of train examples: {}'.format(self.config.NUM_TRAIN_EXAMPLES))
+            self.config.NUM_TRAIN_EXAMPLES = self._get_num_of_examples_for_dataset(
+                self.config.train_data_path)
+            self.log('    Number of train examples: {}'.format(
+                self.config.NUM_TRAIN_EXAMPLES))
         if self.config.is_testing:
-            self.config.NUM_TEST_EXAMPLES = self._get_num_of_examples_for_dataset(self.config.TEST_DATA_PATH)
-            self.log('    Number of test examples: {}'.format(self.config.NUM_TEST_EXAMPLES))
+            self.config.NUM_TEST_EXAMPLES = self._get_num_of_examples_for_dataset(
+                self.config.TEST_DATA_PATH)
+            self.log('    Number of test examples: {}'.format(
+                self.config.NUM_TEST_EXAMPLES))
 
     @staticmethod
     def _get_num_of_examples_for_dataset(dataset_path: str) -> int:
@@ -105,7 +119,8 @@ class Code2VecModelBase(abc.ABC):
         model_save_dir = '/'.join(model_save_path.split('/')[:-1])
         if not os.path.isdir(model_save_dir):
             os.makedirs(model_save_dir, exist_ok=True)
-        self.vocabs.save(self.config.get_vocabularies_path_from_model_path(model_save_path))
+        self.vocabs.save(
+            self.config.get_vocabularies_path_from_model_path(model_save_path))
         self._save_inner_model(model_save_path)
 
     def _write_code_vectors(self, file, code_vectors):
@@ -113,19 +128,16 @@ class Code2VecModelBase(abc.ABC):
             file.write(' '.join(map(str, vec)) + '\n')
 
     def _get_attention_weight_per_context(
-            self, path_source_strings: Iterable[str], path_strings: Iterable[str], path_target_strings: Iterable[str],
-            attention_weights: Iterable[float]) -> Dict[Tuple[str, str, str], float]:
-        attention_weights = np.squeeze(attention_weights, axis=-1)  # (max_contexts, )
+            self, libraries_strings: Iterable[str], attention_weights: Iterable[float]) -> Dict[Tuple[str, str, str], float]:
+        attention_weights = np.squeeze(
+            attention_weights, axis=-1)  # (max_contexts, )
         attention_per_context: Dict[Tuple[str, str, str], float] = {}
         # shape of path_source_strings, path_strings, path_target_strings, attention_weights is (max_contexts, )
 
         # iterate over contexts
-        for path_source, path, path_target, weight in \
-                zip(path_source_strings, path_strings, path_target_strings, attention_weights):
-            string_context_triplet = (common.binary_to_string(path_source),
-                                      common.binary_to_string(path),
-                                      common.binary_to_string(path_target))
-            attention_per_context[string_context_triplet] = weight
+        for library, weight in \
+                zip(libraries_strings, attention_weights):
+            attention_per_context[common.binary_to_string(library)] = weight
         return attention_per_context
 
     def close_session(self):
@@ -175,8 +187,11 @@ class Code2VecModelBase(abc.ABC):
 
     def save_word2vec_format(self, dest_save_path: str, vocab_type: VocabType):
         if vocab_type not in VocabType:
-            raise ValueError('`vocab_type` should be `VocabType.Token`, `VocabType.Target` or `VocabType.Path`.')
-        vocab_embedding_matrix = self._get_vocab_embedding_as_np_array(vocab_type)
+            raise ValueError(
+                '`vocab_type` should be `VocabType.Token`, `VocabType.Target` or `VocabType.Path`.')
+        vocab_embedding_matrix = self._get_vocab_embedding_as_np_array(
+            vocab_type)
         index_to_word = self.vocabs.get(vocab_type).index_to_word
         with open(dest_save_path, 'w') as words_file:
-            common.save_word2vec_file(words_file, index_to_word, vocab_embedding_matrix)
+            common.save_word2vec_file(
+                words_file, index_to_word, vocab_embedding_matrix)
