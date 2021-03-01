@@ -307,7 +307,6 @@ class Code2VecModel(Code2VecModelBase):
             ).from_model_input_form(input_tensors)
             # shape of (batch, 1) for input_tensors.target_string
             # shape of (batch, max_contexts) for the other tensors
-
             code_vectors, attention_weights = self._calculate_weighted_contexts(
                 library_vocab, attention_param, input_tensors.library_indices,
                 input_tensors.valid_library_mask, is_evaluating=True)
@@ -345,8 +344,8 @@ class Code2VecModel(Code2VecModelBase):
 
         prediction_results: List[ModelPredictionResults] = []
         for line in predict_data_lines:
-            batch_top_words, batch_top_scores, batch_original_name, batch_attention_weights, batch_path_source_strings,\
-                batch_path_strings, batch_path_target_strings, batch_code_vectors = self.sess.run(
+            batch_top_words, batch_top_scores, batch_original_name, batch_attention_weights, batch_library_strings,\
+                batch_code_vectors = self.sess.run(
                     [self.predict_top_words_op, self.predict_top_values_op, self.predict_original_names_op,
                      self.attention_weights_op, self.predict_source_libraries, self.predict_code_vectors],
                     feed_dict={self.predict_placeholder: line})
@@ -402,7 +401,7 @@ class Code2VecModel(Code2VecModelBase):
                                                  config=self.config, estimator_action=EstimatorAction.Evaluate)
             input_iterator = tf.compat.v1.data.make_initializable_iterator(
                 self.eval_reader.get_dataset())
-            _, _, _, _, _, _, _, _ = self._build_tf_test_graph(
+            _, _, _, _, _, _ = self._build_tf_test_graph(
                 input_iterator.get_next())
 
         if vocab_type is VocabType.Library:

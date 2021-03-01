@@ -74,7 +74,6 @@ class Vocab:
 
         # Notice: From historical reasons, a saved vocab doesn't include special words,
         #         so they should be added upon loading.
-
         word_to_index_wo_specials = pickle.load(file)
         index_to_word_wo_specials = pickle.load(file)
         size_wo_specials = pickle.load(file)
@@ -214,6 +213,7 @@ class Code2VecVocabs:
             return
         with open(vocabularies_save_path, 'wb') as file:
             self.library_vocab.save_to_file(file)
+            self.target_vocab.save_to_file(file)
         self._already_saved_in_paths.add(vocabularies_save_path)
 
     def _load_word_freq_dict(self) -> Code2VecWordFreqDicts:
@@ -224,7 +224,8 @@ class Code2VecVocabs:
             library_to_count = pickle.load(file)
             target_to_count = pickle.load(file)
         self.config.log('Done loading word frequencies dictionaries.')
-        # assert all(isinstance(item, WordFreqDictType) for item in {token_to_count, path_to_count, target_to_count})
+        # assert all(isinstance(item, WordFreqDictType)
+        #            for item in {library_to_count, target_to_count})
         return Code2VecWordFreqDicts(
             library_to_count=library_to_count, target_to_count=target_to_count)
 
