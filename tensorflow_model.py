@@ -30,7 +30,7 @@ class Code2VecModel(Code2VecModelBase):
         self.predict_top_words_op, self.predict_top_values_op, self.predict_original_names_op = None, None, None
 
         self.vocab_type_to_tf_variable_name_mapping: Dict[VocabType, str] = {
-            VocabType.Library: 'LIBRARY_VOCAB',
+            VocabType.Token: 'TOKEN_VOCAB',
             VocabType.Target: 'TARGET_VOCAB',
         }
 
@@ -49,6 +49,7 @@ class Code2VecModel(Code2VecModelBase):
         train_reader = PathContextReader(vocabs=self.vocabs,
                                          model_input_tensors_former=_TFTrainModelInputTensorsFormer(),
                                          config=self.config, estimator_action=EstimatorAction.Train)
+
         input_iterator = tf.compat.v1.data.make_initializable_iterator(
             train_reader.get_dataset())
         input_iterator_reset_op = input_iterator.initializer
@@ -105,7 +106,8 @@ class Code2VecModel(Code2VecModelBase):
                         nr_epochs=epoch_num,
                         evaluation_results=evaluation_results_str
                     ))
-        except tf.errors.OutOfRangeError:
+        except tf.errors.OutOfRangeError as e:
+            print(e)
             # The reader iterator is exhausted and have no more batches to produce.
             pass
 
@@ -221,11 +223,11 @@ class Code2VecModel(Code2VecModelBase):
         # shape of (batch, max_contexts) for others:
         #   input_tensors.path_source_token_indices, input_tensors.path_indices,
         #   input_tensors.path_target_token_indices, input_tensors.context_valid_mask
-
+        # raise Exception(input_tensors.eval())
         with tf.compat.v1.variable_scope('model'):
-            library_vocab = tf.compat.v1.get_variable(
-                self.vocab_type_to_tf_variable_name_mapping[VocabType.Library],
-                shape=(self.vocabs.library_vocab.size,
+            token_vocab = tf.compat.v1.get_variable(
+                self.vocab_type_to_tf_variable_name_mapping[VocabType.Token],
+                shape=(self.vocabs.token_vocab.size,
                        self.config.DEFAULT_EMBEDDINGS_SIZE), dtype=tf.float32,
                 initializer=tf.compat.v1.initializers.variance_scaling(scale=1.0, mode='fan_out', distribution="uniform"))
             targets_vocab = tf.compat.v1.get_variable(
@@ -238,7 +240,7 @@ class Code2VecModel(Code2VecModelBase):
                 shape=(self.config.DEFAULT_EMBEDDINGS_SIZE, 1), dtype=tf.float32)
 
             code_vectors, _ = self._calculate_weighted_contexts(
-                library_vocab, attention_param, input_tensors.library_indices, input_tensors.valid_library_mask)
+                token_vocab, attention_param, input_tensors.token_indices, input_tensors.token_valid_mask)
 
             logits = tf.matmul(code_vectors, targets_vocab, transpose_b=True)
             batch_size = tf.cast(tf.shape(input_tensors.target_index)[
@@ -251,33 +253,33 @@ class Code2VecModel(Code2VecModelBase):
 
         return optimizer, loss
 
-    def _calculate_weighted_contexts(self, library_vocab, attention_param, source_input, valid_mask, is_evaluating=False):
-        library_embed = tf.nn.embedding_lookup(
-            params=library_vocab, ids=source_input)  # (batch, max_contexts, dim)
+    def _calculate_weighted_contexts(self, token_vocab, attention_param, source_input, valid_mask, is_evaluating=False):
+        token_embed = tf.nn.embedding_lookup(
+            params=token_vocab, ids=source_input)  # (batch, max_contexts, dim)
 
         if not is_evaluating:
-            library_embed = tf.nn.dropout(
-                library_embed, rate=1-self.config.DROPOUT_KEEP_RATE)
+            token_embed = tf.nn.dropout(
+                token_embed, rate=1-self.config.DROPOUT_KEEP_RATE)
 
         # (batch * max_contexts, dim * 3)
         transform_param = tf.compat.v1.get_variable(
             'TRANSFORM', shape=(self.config.DEFAULT_EMBEDDINGS_SIZE, self.config.DEFAULT_EMBEDDINGS_SIZE), dtype=tf.float32)
 
         # (batch * max_contexts, dim * 3)
-        library_embed = tf.tanh(tf.matmul(library_embed, transform_param))
+        token_embed = tf.tanh(tf.matmul(token_embed, transform_param))
 
         # (batch * max_contexts, 1)
-        library_weights = tf.matmul(library_embed, attention_param)
-        batched_library_weights = tf.reshape(
-            library_weights, [-1, self.config.MAX_LIBRARIES, 1])  # (batch, max_contexts, 1)
+        token_weights = tf.matmul(token_embed, attention_param)
+        batched_token_weights = tf.reshape(
+            token_weights, [-1, self.config.MAX_TOKENS, 1])  # (batch, max_contexts, 1)
         mask = tf.math.log(valid_mask)  # (batch, max_contexts)
         mask = tf.expand_dims(mask, axis=2)  # (batch, max_contexts, 1)
-        batched_library_weights += mask  # (batch, max_contexts, 1)
+        batched_token_weights += mask  # (batch, max_contexts, 1)
         attention_weights = tf.nn.softmax(
-            batched_library_weights, axis=1)  # (batch, max_contexts, 1)
+            batched_token_weights, axis=1)  # (batch, max_contexts, 1)
 
         batched_embed = tf.reshape(
-            library_embed, shape=[-1, self.config.MAX_LIBRARIES, self.config.DEFAULT_EMBEDDINGS_SIZE])
+            token_embed, shape=[-1, self.config.MAX_TOKENS, self.config.DEFAULT_EMBEDDINGS_SIZE])
         code_vectors = tf.reduce_sum(tf.multiply(
             batched_embed, attention_weights), axis=1)  # (batch, dim * 3)
 
@@ -285,9 +287,9 @@ class Code2VecModel(Code2VecModelBase):
 
     def _build_tf_test_graph(self, input_tensors, normalize_scores=False):
         with tf.compat.v1.variable_scope('model', reuse=self.get_should_reuse_variables()):
-            library_vocab = tf.compat.v1.get_variable(
-                self.vocab_type_to_tf_variable_name_mapping[VocabType.Library],
-                shape=(self.vocabs.library_vocab.size,
+            token_vocab = tf.compat.v1.get_variable(
+                self.vocab_type_to_tf_variable_name_mapping[VocabType.Token],
+                shape=(self.vocabs.token_vocab.size,
                        self.config.DEFAULT_EMBEDDINGS_SIZE),
                 dtype=tf.float32, trainable=False)
             targets_vocab = tf.compat.v1.get_variable(
@@ -308,8 +310,8 @@ class Code2VecModel(Code2VecModelBase):
             # shape of (batch, 1) for input_tensors.target_string
             # shape of (batch, max_contexts) for the other tensors
             code_vectors, attention_weights = self._calculate_weighted_contexts(
-                library_vocab, attention_param, input_tensors.library_indices,
-                input_tensors.valid_library_mask, is_evaluating=True)
+                token_vocab, attention_param, input_tensors.token_indices,
+                input_tensors.token_valid_mask, is_evaluating=True)
 
         # (batch, target_word_vocab)
         scores = tf.matmul(code_vectors, targets_vocab)
@@ -323,7 +325,7 @@ class Code2VecModel(Code2VecModelBase):
         if normalize_scores:
             top_scores = tf.nn.softmax(top_scores)
 
-        return top_words, top_scores, original_words, attention_weights, input_tensors.libraries_strings, code_vectors
+        return top_words, top_scores, original_words, attention_weights, input_tensors.token_strings, code_vectors
 
     def predict(self, predict_data_lines: Iterable[str]) -> List[ModelPredictionResults]:
         if self.predict_reader is None:
@@ -335,7 +337,7 @@ class Code2VecModel(Code2VecModelBase):
                 self.predict_placeholder)
 
             self.predict_top_words_op, self.predict_top_values_op, self.predict_original_names_op, \
-                self.attention_weights_op, self.predict_source_libraries, self.predict_code_vectors = \
+                self.attention_weights_op, self.predict_source_tokens, self.predict_code_vectors = \
                 self._build_tf_test_graph(reader_output, normalize_scores=True)
 
             self._initialize_session_variables()
@@ -344,10 +346,10 @@ class Code2VecModel(Code2VecModelBase):
 
         prediction_results: List[ModelPredictionResults] = []
         for line in predict_data_lines:
-            batch_top_words, batch_top_scores, batch_original_name, batch_attention_weights, batch_library_strings,\
+            batch_top_words, batch_top_scores, batch_original_name, batch_attention_weights, batch_token_strings,\
                 batch_code_vectors = self.sess.run(
                     [self.predict_top_words_op, self.predict_top_values_op, self.predict_original_names_op,
-                     self.attention_weights_op, self.predict_source_libraries, self.predict_code_vectors],
+                     self.attention_weights_op, self.predict_source_tokens, self.predict_code_vectors],
                     feed_dict={self.predict_placeholder: line})
             # shapes:
             #   batch_top_words, top_scores: (batch, top_k)
@@ -358,19 +360,19 @@ class Code2VecModel(Code2VecModelBase):
 
             # remove first axis: (batch=1, ...)
             assert all(tensor.shape[0] == 1 for tensor in (batch_top_words, batch_top_scores, batch_original_name,
-                                                           batch_attention_weights, batch_library_strings,
+                                                           batch_attention_weights, batch_token_strings,
                                                            batch_code_vectors))
             top_words = np.squeeze(batch_top_words, axis=0)
             top_scores = np.squeeze(batch_top_scores, axis=0)
             original_name = batch_original_name[0]
             attention_weights = np.squeeze(batch_attention_weights, axis=0)
-            library_strings = np.squeeze(batch_library_strings, axis=0)
+            token_strings = np.squeeze(batch_token_strings, axis=0)
             code_vectors = np.squeeze(batch_code_vectors, axis=0)
 
             top_words = common.binary_to_string_list(top_words)
             original_name = common.binary_to_string(original_name)
             attention_per_context = self._get_attention_weight_per_context(
-                library_strings, attention_weights)
+                token_strings, attention_weights)
             prediction_results.append(ModelPredictionResults(
                 original_name=original_name,
                 topk_predicted_words=top_words,
@@ -404,8 +406,8 @@ class Code2VecModel(Code2VecModelBase):
             _, _, _, _, _, _ = self._build_tf_test_graph(
                 input_iterator.get_next())
 
-        if vocab_type is VocabType.Library:
-            shape = (self.vocabs.library_vocab.size,
+        if vocab_type is VocabType.Token:
+            shape = (self.vocabs.token_vocab.size,
                      self.config.DEFAULT_EMBEDDINGS_SIZE)
         elif vocab_type is VocabType.Target:
             shape = (self.vocabs.target_vocab.size,
@@ -538,14 +540,14 @@ class TopKAccuracyEvaluationMetric:
 
 class _TFTrainModelInputTensorsFormer(ModelInputTensorsFormer):
     def to_model_input_form(self, input_tensors: ReaderInputTensors):
-        return (input_tensors.library_indices, input_tensors.valid_library_mask,
-                input_tensors.libraries_strings, input_tensors.target_index, input_tensors.target_string)
+        return (input_tensors.token_indices, input_tensors.token_valid_mask,
+                input_tensors.token_strings, input_tensors.target_index, input_tensors.target_string)
 
     def from_model_input_form(self, input_row) -> ReaderInputTensors:
         return ReaderInputTensors(
-            library_indices=input_row[0],
-            valid_library_mask=input_row[1],
-            libraries_strings=input_row[2],
+            token_indices=input_row[0],
+            token_valid_mask=input_row[1],
+            token_strings=input_row[2],
             target_index=input_row[3],
             target_string=input_row[4],
         )
@@ -553,13 +555,13 @@ class _TFTrainModelInputTensorsFormer(ModelInputTensorsFormer):
 
 class _TFEvaluateModelInputTensorsFormer(ModelInputTensorsFormer):
     def to_model_input_form(self, input_tensors: ReaderInputTensors):
-        return (input_tensors.library_indices, input_tensors.valid_library_mask,
-                input_tensors.libraries_strings, input_tensors.target_string)
+        return (input_tensors.token_indices, input_tensors.token_valid_mask,
+                input_tensors.token_strings, input_tensors.target_string)
 
     def from_model_input_form(self, input_row) -> ReaderInputTensors:
         return ReaderInputTensors(
-            library_indices=input_row[0],
-            valid_library_mask=input_row[1],
-            libraries_strings=input_row[2],
+            token_indices=input_row[0],
+            token_valid_mask=input_row[1],
+            token_strings=input_row[2],
             target_string=input_row[3],
         )

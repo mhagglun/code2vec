@@ -33,9 +33,9 @@ class ReaderInputTensors(NamedTuple):
     """
     Used mostly for convenient-and-clear access to input parts (by their names).
     """
-    library_indices: tf.Tensor
-    valid_library_mask: tf.Tensor
-    libraries_strings: tf.Tensor
+    token_indices: tf.Tensor
+    token_valid_mask: tf.Tensor
+    token_strings: tf.Tensor
     target_index: Optional[tf.Tensor] = None
     target_string: Optional[tf.Tensor] = None
 
@@ -73,20 +73,19 @@ class PathContextReader:
         self.estimator_action = estimator_action
         self.repeat_endlessly = repeat_endlessly
         self.csv_record_defaults = [[self.vocabs.target_vocab.special_words.OOV]] + \
-            ([[self.vocabs.library_vocab.special_words.PAD]]
-             * self.config.MAX_LIBRARIES)
+            ([[self.vocabs.token_vocab.special_words.PAD]] * self.config.MAX_TOKENS)
 
         # initialize the needed lookup tables (if not already initialized).
         self.create_needed_vocabs_lookup_tables(self.vocabs)
 
         self._dataset: Optional[tf.data.Dataset] = None
 
-    @classmethod
+    @ classmethod
     def create_needed_vocabs_lookup_tables(cls, vocabs: Code2VecVocabs):
-        vocabs.library_vocab.get_word_to_index_lookup_table()
+        vocabs.token_vocab.get_word_to_index_lookup_table()
         vocabs.target_vocab.get_word_to_index_lookup_table()
 
-    @tf.function
+    @ tf.function
     def process_input_row(self, row_placeholder):
         parts = tf.io.decode_csv(
             row_placeholder, record_defaults=self.csv_record_defaults, field_delim=' ', use_quote_delim=False)
@@ -165,16 +164,16 @@ class PathContextReader:
         #                  self.vocabs.path_vocab.word_to_index[self.vocabs.path_vocab.special_words.PAD])]
         # any_contexts_is_valid = reduce(
         #     tf.logical_or, any_word_valid_mask_per_context_part)  # scalar
-        libraries_is_valid = tf.not_equal(tf.reduce_max(row_parts.library_indices, axis=0),
-                                          self.vocabs.library_vocab.word_to_index[self.vocabs.library_vocab.special_words.PAD])
+        tokens_are_valid = tf.not_equal(tf.reduce_max(row_parts.token_indices, axis=0),
+                                        self.vocabs.token_vocab.word_to_index[self.vocabs.token_vocab.special_words.PAD])
 
         if self.estimator_action.is_evaluate:
-            cond = libraries_is_valid  # scalar
+            cond = tokens_are_valid  # scalar
         else:  # training
             target_is_valid = tf.greater(
                 row_parts.target_index, self.vocabs.target_vocab.word_to_index[self.vocabs.target_vocab.special_words.OOV])  # scalar
             cond = tf.logical_and(
-                target_is_valid, libraries_is_valid)  # scalar
+                target_is_valid, tokens_are_valid)  # scalar
 
         return cond  # scalar
 
@@ -188,35 +187,31 @@ class PathContextReader:
         target_str = row_parts[0]
         target_index = self.vocabs.target_vocab.lookup_index(target_str)
 
-        libraries_strings = tf.stack(
-            row_parts[1:(self.config.MAX_LIBRARIES + 1)], axis=0)
+        token_strings = tf.stack(
+            row_parts[1:(self.config.MAX_TOKENS + 1)], axis=0)
 
-        # split_libraries = tf.compat.v1.string_split(
-        #     libraries_str, sep=',', skip_empty=False)
-        # dense_split_libraries = tf.sparse_tensor_to_dense(
-        #     split_libraries, default_value=self.vocabs.library_vocab.special_words.PAD)
+        split_tokens = tf.compat.v1.string_split(
+            token_strings, sep=' ', skip_empty=False)
+        # dense_split_tokens = tf.sparse_tensor_to_dense(
+        #     split_tokens, default_value=self.vocabs.token_vocab.special_words.PAD)
+        sparse_split_tokens = tf.sparse.SparseTensor(
+            indices=split_tokens.indices, values=split_tokens.values, dense_shape=[self.config.MAX_TOKENS, self.config.MAX_TOKEN_VOCAB_SIZE])
 
-        # sparse_split_libraries = tf.sparse.SparseTensor(
-        #     indices=split_libraries.indices, values=split_libraries.values, dense_shape=[self.config.MAX_LIBRARIES])
+        dense_split_tokens = tf.reshape(
+            tf.sparse.to_dense(sp_input=sparse_split_tokens,
+                               default_value=self.vocabs.token_vocab.special_words.PAD),
+            shape=[self.config.MAX_TOKENS, self.config.MAX_TOKEN_VOCAB_SIZE])
 
-        # dense_split_libraries = tf.reshape(
-        #     tf.sparse.to_dense(sp_input=sparse_split_libraries,
-        #                        default_value=self.vocabs.library_vocab.special_words.PAD),
-        #     shape=[self.config.MAX_LIBRARIES])  # (max_libraries, 3)
+        token_indices = self.vocabs.token_vocab.lookup_index(
+            token_strings)  # (max_contexts, )
 
-        # libraries_strings = tf.squeeze(
-        #     tf.slice(dense_split_libraries, begin=[0, 1], size=[self.config.MAX_LIBRARIES]), axis=1)  # (max_contexts,)
-
-        library_indices = self.vocabs.library_vocab.lookup_index(
-            libraries_strings)  # (max_contexts, )
-
-        valid_library_mask = tf.cast(tf.not_equal(library_indices,
-                                                  self.vocabs.library_vocab.word_to_index[self.vocabs.library_vocab.special_words.PAD]), dtype=tf.float32)
+        token_valid_mask = tf.cast(tf.not_equal(token_indices,
+                                                self.vocabs.token_vocab.word_to_index[self.vocabs.token_vocab.special_words.PAD]), dtype=tf.float32)
 
         return ReaderInputTensors(
-            library_indices=library_indices,
-            libraries_strings=libraries_strings,
-            valid_library_mask=valid_library_mask,
+            token_indices=token_indices,
+            token_strings=token_strings,
+            token_valid_mask=token_valid_mask,
             target_index=target_index,
             target_string=target_str,
         )

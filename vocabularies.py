@@ -11,7 +11,7 @@ from common import common
 
 
 class VocabType(Enum):
-    Library = 1
+    Token = 1
     Target = 2
 
 
@@ -147,14 +147,14 @@ WordFreqDictType = Dict[str, int]
 
 
 class Code2VecWordFreqDicts(NamedTuple):
-    library_to_count: WordFreqDictType
+    token_to_count: WordFreqDictType
     target_to_count: WordFreqDictType
 
 
 class Code2VecVocabs:
     def __init__(self, config: Config):
         self.config = config
-        self.library_vocab: Optional[Vocab] = None
+        self.token_vocab: Optional[Vocab] = None
         self.target_vocab: Optional[Vocab] = None
         # Used to avoid re-saving a non-modified vocabulary to a path it is already saved in.
         self._already_saved_in_paths: Set[str] = set()
@@ -179,8 +179,8 @@ class Code2VecVocabs:
         self.config.log('Loading model vocabularies from: `%s` ... ' %
                         vocabularies_load_path)
         with open(vocabularies_load_path, 'rb') as file:
-            self.library_vocab = Vocab.load_from_file(
-                VocabType.Library, file, self._get_special_words_by_vocab_type(VocabType.Library))
+            self.token_vocab = Vocab.load_from_file(
+                VocabType.Token, file, self._get_special_words_by_vocab_type(VocabType.Token))
             self.target_vocab = Vocab.load_from_file(
                 VocabType.Target, file, self._get_special_words_by_vocab_type(VocabType.Target))
         self.config.log('Done loading model vocabularies.')
@@ -190,11 +190,11 @@ class Code2VecVocabs:
         word_freq_dict = self._load_word_freq_dict()
         self.config.log(
             'Word frequencies dictionaries loaded. Now creating vocabularies.')
-        self.library_vocab = Vocab.create_from_freq_dict(
-            VocabType.Library, word_freq_dict.library_to_count, self.config.MAX_LIBRARY_VOCAB_SIZE,
-            special_words=self._get_special_words_by_vocab_type(VocabType.Library))
-        self.config.log('Created library vocab. size: %d' %
-                        self.library_vocab.size)
+        self.token_vocab = Vocab.create_from_freq_dict(
+            VocabType.Token, word_freq_dict.token_to_count, self.config.MAX_TOKEN_VOCAB_SIZE,
+            special_words=self._get_special_words_by_vocab_type(VocabType.Token))
+        self.config.log('Created token vocab. size: %d' %
+                        self.token_vocab.size)
         self.target_vocab = Vocab.create_from_freq_dict(
             VocabType.Target, word_freq_dict.target_to_count, self.config.MAX_TARGET_VOCAB_SIZE,
             special_words=self._get_special_words_by_vocab_type(VocabType.Target))
@@ -212,7 +212,7 @@ class Code2VecVocabs:
         if vocabularies_save_path in self._already_saved_in_paths:
             return
         with open(vocabularies_save_path, 'wb') as file:
-            self.library_vocab.save_to_file(file)
+            self.token_vocab.save_to_file(file)
             self.target_vocab.save_to_file(file)
         self._already_saved_in_paths.add(vocabularies_save_path)
 
@@ -221,19 +221,19 @@ class Code2VecVocabs:
         self.config.log('Loading word frequencies dictionaries from: %s ... ' %
                         self.config.word_freq_dict_path)
         with open(self.config.word_freq_dict_path, 'rb') as file:
-            library_to_count = pickle.load(file)
+            token_to_count = pickle.load(file)
             target_to_count = pickle.load(file)
         self.config.log('Done loading word frequencies dictionaries.')
         # assert all(isinstance(item, WordFreqDictType)
-        #            for item in {library_to_count, target_to_count})
+        #            for item in {token_to_count, target_to_count})
         return Code2VecWordFreqDicts(
-            library_to_count=library_to_count, target_to_count=target_to_count)
+            token_to_count=token_to_count, target_to_count=target_to_count)
 
     def get(self, vocab_type: VocabType) -> Vocab:
         if not isinstance(vocab_type, VocabType):
             raise ValueError(
-                '`vocab_type` should be `VocabType.Library` or `VocabType.Target`')
-        if vocab_type == VocabType.Library:
-            return self.library_vocab
+                '`vocab_type` should be `VocabType.Token` or `VocabType.Target`')
+        if vocab_type == VocabType.Token:
+            return self.token_vocab
         if vocab_type == VocabType.Target:
             return self.target_vocab

@@ -55,18 +55,15 @@ class Config:
         self.READER_NUM_PARALLEL_BATCHES = 6
         self.SHUFFLE_BUFFER_SIZE = 10000
         self.CSV_BUFFER_SIZE = 150 * 1024 * 1024  # 100 MB
-        self.MAX_TO_KEEP = 10
+        self.MAX_TO_KEEP = 2
 
-        # model hyper-params
-        self.MAX_LIBRARIES = 100
-        self.MAX_LIBRARY_VOCAB_SIZE = 126797
-        self.MAX_CONTEXTS = 200
-        self.MAX_TOKEN_VOCAB_SIZE = 1301136
-        self.MAX_TARGET_VOCAB_SIZE = 156148
-        self.MAX_PATH_VOCAB_SIZE = 911417
+        # model hyper-params\
+
+        self.MAX_TOKENS = 6686
+        self.MAX_TOKEN_VOCAB_SIZE = 406192
+        self.MAX_TARGET_VOCAB_SIZE = 582470
         self.DEFAULT_EMBEDDINGS_SIZE = 128
         self.TOKEN_EMBEDDINGS_SIZE = self.DEFAULT_EMBEDDINGS_SIZE
-        self.PATH_EMBEDDINGS_SIZE = self.DEFAULT_EMBEDDINGS_SIZE
         self.CODE_VECTOR_SIZE = self.context_vector_size
         self.TARGET_EMBEDDINGS_SIZE = self.CODE_VECTOR_SIZE
         self.DROPOUT_KEEP_RATE = 0.75
@@ -103,6 +100,7 @@ class Config:
         self.MAX_TO_KEEP: int = 0
 
         # model hyper-params
+        self.MAX_TOKENS: int = 0
         self.MAX_LIBRARIES: int = 0
         self.MAX_LIBRARY_VOCAB_SIZE: int = 0
         self.MAX_CONTEXTS: int = 0

@@ -9,17 +9,17 @@ and pads methods with less paths with spaces.
 '''
 
 
-def save_dictionaries(dataset_name, library_to_count, target_to_count,
+def save_dictionaries(dataset_name, token_to_count, target_to_count,
                       num_training_examples):
     save_dict_file_path = '{}.dict.c2v'.format(dataset_name)
     with open(save_dict_file_path, 'wb') as file:
-        pickle.dump(library_to_count, file)
+        pickle.dump(token_to_count, file)
         pickle.dump(target_to_count, file)
         pickle.dump(num_training_examples, file)
         print('Dictionaries saved to: {}'.format(save_dict_file_path))
 
 
-def process_file(file_path, data_file_role, dataset_name, library_to_count, max_libraries):
+def process_file(file_path, data_file_role, dataset_name, token_to_count, max_tokens):
     sum_total = 0
     sum_sampled = 0
     total = 0
@@ -29,26 +29,25 @@ def process_file(file_path, data_file_role, dataset_name, library_to_count, max_
     with open(output_path, 'w') as outfile:
         with open(file_path, 'r') as file:
             for line in file:
-                parts = line.rstrip(' ').rstrip('\n').split(',')
+                parts = line.rstrip('\n').split(' ')
                 target_name = parts[0]
-                libraries = parts[1:]
+                tokens = parts[1].split(',')
+                # TODO: Add sampling if len(tokens) > max_tokens
 
-                # TODO: Add sampling if len(libraries) > max_libraries
-
-                if len(libraries) == 0:
+                if len(tokens) == 0:
                     empty += 1
                     continue
 
-                sum_sampled += len(libraries)
+                sum_sampled += len(tokens)
 
-                csv_padding = " " * (max_libraries - len(libraries))
-                outfile.write(target_name + ' ' +
-                              " ".join(libraries) + csv_padding + '\n')
+                csv_padding = " " * (max_tokens - len(tokens))
+                outfile.write(target_name + " " +
+                              " ".join(tokens) + csv_padding + '\n')
                 total += 1
 
     print('File: ' + file_path)
-    print('Average total libraries: ' + str(float(sum_total) / total))
-    print('Average final (after sampling) libraries: ' +
+    print('Average total tokens: ' + str(float(sum_total) / total))
+    print('Average final (after sampling) tokens: ' +
           str(float(sum_sampled) / total))
     print('Total examples: ' + str(total))
     print('Empty examples: ' + str(empty))
@@ -74,9 +73,9 @@ if __name__ == '__main__':
                         help="path to test data file", required=True)
     parser.add_argument("-vd", "--val_data", dest="val_data_path",
                         help="path to validation data file", required=True)
-    parser.add_argument("-ml", "--max_libraries", dest="max_libraries", default=100,
-                        help="number of max libraries to keep", required=False)
-    parser.add_argument("-lvs", "--library_vocab_size", dest="library_vocab_size", default=126797,
+    parser.add_argument("-mt", "--max_tokens", dest="max_tokens", default=100,
+                        help="number of max tokens to keep", required=False)
+    parser.add_argument("-wvs", "--token_vocab_size", dest="token_vocab_size", default=126797,
                         help="Max number of origin word in to keep in the vocabulary", required=False)
     parser.add_argument("-tvs", "--target_vocab_size", dest="target_vocab_size", default=156148,
                         help="Max number of target words to keep in the vocabulary", required=False)
@@ -96,7 +95,7 @@ if __name__ == '__main__':
 
     word_histogram_data = common.common.load_vocab_from_histogram(word_histogram_path, start_from=1,
                                                                   max_size=int(
-                                                                      args.library_vocab_size),
+                                                                      args.token_vocab_size),
                                                                   return_counts=True)
     _, _, _, word_to_count = word_histogram_data
     _, _, _, target_to_count = common.common.load_vocab_from_histogram(args.target_histogram, start_from=1,
@@ -107,9 +106,9 @@ if __name__ == '__main__':
     num_training_examples = 0
     for data_file_path, data_role in zip([test_data_path, val_data_path, train_data_path], ['test', 'val', 'train']):
         num_examples = process_file(file_path=data_file_path, data_file_role=data_role, dataset_name=args.output_name,
-                                    library_to_count=word_to_count, max_libraries=int(args.max_libraries))
+                                    token_to_count=word_to_count, max_tokens=int(args.max_tokens))
         if data_role == 'train':
             num_training_examples = num_examples
 
-    save_dictionaries(dataset_name=args.output_name, library_to_count=word_to_count, target_to_count=target_to_count,
+    save_dictionaries(dataset_name=args.output_name, token_to_count=word_to_count, target_to_count=target_to_count,
                       num_training_examples=num_training_examples)
