@@ -122,7 +122,8 @@ class PathContextReader:
                 lambda input_line: tf.io.decode_csv(
                     tf.reshape(tf.cast(input_line, tf.string), ()),
                     record_defaults=self.csv_record_defaults,
-                    field_delim=' ', use_quote_delim=False))
+                    field_delim=' ', use_quote_delim=False),
+                num_parallel_calls=tf.data.AUTOTUNE)
 
         if self.repeat_endlessly:
             dataset = dataset.repeat()
@@ -133,7 +134,8 @@ class PathContextReader:
                 self.config.SHUFFLE_BUFFER_SIZE, reshuffle_each_iteration=True)
 
         dataset = dataset.map(self._map_raw_dataset_row_to_expected_model_input_form,
-                              num_parallel_calls=self.config.READER_NUM_PARALLEL_BATCHES)
+                              num_parallel_calls=tf.data.AUTOTUNE)
+
         batch_size = self.config.batch_size(
             is_evaluating=self.estimator_action.is_evaluate)
         if self.estimator_action.is_predict:
@@ -142,8 +144,7 @@ class PathContextReader:
             dataset = dataset.filter(self._filter_input_rows)
             dataset = dataset.batch(batch_size)
 
-        # original: tf.contrib.data.AUTOTUNE) -- got OOM err; 10 seems promising.
-        dataset = dataset.prefetch(buffer_size=40)
+        dataset = dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
         return dataset
 
     def _filter_input_rows(self, *row_parts) -> tf.bool:
@@ -191,7 +192,8 @@ class PathContextReader:
             row_parts[1:(self.config.MAX_TOKENS + 1)], axis=0)
 
         split_tokens = tf.compat.v1.string_split(
-            token_strings, sep=' ', skip_empty=False)
+            token_strings, sep=', ', skip_empty=False)
+
         # dense_split_tokens = tf.sparse_tensor_to_dense(
         #     split_tokens, default_value=self.vocabs.token_vocab.special_words.PAD)
         sparse_split_tokens = tf.sparse.SparseTensor(

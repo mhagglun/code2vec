@@ -91,9 +91,8 @@ if __name__ == '__main__':
     train_data_path = args.train_data_path
     test_data_path = args.test_data_path
     val_data_path = args.val_data_path
-    word_histogram_path = args.word_histogram
 
-    word_histogram_data = common.common.load_vocab_from_histogram(word_histogram_path, start_from=1,
+    word_histogram_data = common.common.load_vocab_from_histogram(args.word_histogram, start_from=1,
                                                                   max_size=int(
                                                                       args.token_vocab_size),
                                                                   return_counts=True)

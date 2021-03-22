@@ -22,7 +22,7 @@ if __name__ == '__main__':
     if config.is_training:
         model.train()
     if config.SAVE_W2V is not None:
-        model.save_word2vec_format(config.SAVE_W2V, VocabType.Library)
+        model.save_word2vec_format(config.SAVE_W2V, VocabType.Token)
         config.log(
             'Origin word vectors saved in word2vec text format in: %s' % config.SAVE_W2V)
     if config.SAVE_T2V is not None:
