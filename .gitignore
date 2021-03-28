@@ -7,3 +7,5 @@
 **/log.txt
 __pycache__/
 .ipynb_checkpoints/
+
+results/
