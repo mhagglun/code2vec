@@ -42,13 +42,17 @@ EXTRACTOR_JAR=astminer/shadow/lib-0.6.jar
 
 echo "Extracting paths from validation set..."
 ${JAVA} -jar ${EXTRACTOR_JAR} code2vec --lang ${LANG} --project ${VAL_DIR} --output ${VAL_DATA_FILE} --maxL 8 --maxW 2 --maxContexts ${MAX_CONTEXTS} --maxTokens ${WORD_VOCAB_SIZE} --maxPaths ${PATH_VOCAB_SIZE} --split-tokens --granularity method
+sed -i 's/_/|/g' ${VAL_DATA_FILE}/${LANG}/path_contexts.csv
 echo "Finished extracting paths from validation set"
 echo "Extracting paths from test set..."
 ${JAVA} -jar ${EXTRACTOR_JAR} code2vec --lang ${LANG} --project ${TEST_DIR} --output ${TEST_DATA_FILE} --maxL 8 --maxW 2 --maxContexts ${MAX_CONTEXTS} --maxTokens ${WORD_VOCAB_SIZE} --maxPaths ${PATH_VOCAB_SIZE} --split-tokens --granularity method
+sed -i 's/_/|/g' ${TEST_DATA_FILE}/${LANG}/path_contexts.csv
 echo "Finished extracting paths from test set"
 echo "Extracting paths from training set..."
 ${JAVA} -jar ${EXTRACTOR_JAR} code2vec --lang ${LANG} --project ${TRAIN_DIR} --output ${TRAIN_DATA_FILE} --maxL 8 --maxW 2 --maxContexts ${MAX_CONTEXTS} --maxTokens ${WORD_VOCAB_SIZE} --maxPaths ${PATH_VOCAB_SIZE} --split-tokens --granularity method
+sed -i 's/_/|/g' ${TRAIN_DATA_FILE}/${LANG}/path_contexts.csv
 echo "Finished extracting paths from training set"
+
 
 TARGET_HISTOGRAM_FILE=data/${DATASET_NAME}/${DATASET_NAME}.histo.tgt.c2v
 ORIGIN_HISTOGRAM_FILE=data/${DATASET_NAME}/${DATASET_NAME}.histo.ori.c2v
