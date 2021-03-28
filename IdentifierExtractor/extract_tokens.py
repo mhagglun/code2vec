@@ -75,8 +75,8 @@ class Extractor():
             with open(fname) as fh:
                 root = ast.parse(fh.read(), fname)
         except Exception as e:
-            # if (args.verbose):
-            print(f"Skippings problematic file {e}", fname, file=sys.stderr)
+            if (args.verbose):
+                print(f"Skippings problematic file {e}", fname, file=sys.stderr)
             return
 
         nodeVisitor = NodeVisitor(fname)
@@ -89,7 +89,7 @@ class Extractor():
 
     def extract(self):
         projects = glob.glob(self.args.directory+'/**/*.py', recursive=True)
-        with tqdm(total=len(projects), unit=' Files', desc='Extracting libraries from files') as pbar:
+        with tqdm(total=len(projects), unit=' Files', desc='Extracting methods from files') as pbar:
             with ThreadPoolExecutor(max_workers=10) as executor:
                 tasks = {executor.submit(
                     self.token_extractor, file): file for file in projects}
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-d", "--directory", dest="directory", type=str,
                         help="The directory of the projects to extract libraries from", required=True)
-    parser.add_argument("-o", "--output", dest="output", type=str, default="./code2lib.json",
+    parser.add_argument("-o", "--output", dest="output", type=str, default="./tokens.json",
                         help="The output filepath", required=False)
     parser.add_argument("-v", "--verbose", dest="verbose", type=bool, default=False,
                         help="Increase verbosity of output", required=False)

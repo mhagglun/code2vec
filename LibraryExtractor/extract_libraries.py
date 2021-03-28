@@ -88,47 +88,45 @@ def get_target(node):
 
 
 class NodeVisitor(ast.NodeVisitor):
-    def __init__(self, fname, imports, filters):
+    def __init__(self, fname, imports):
         self.fname = fname
         self.imports = imports
-        self.filters = filters
         self.method_libraries = []
 
     def visit_FunctionDef(self, node):
         method_name = node.name
-        if (method_name in self.filters):
-            library_references, path = [], deque()
-            for body in node.body:
-                # Get target name if possible
-                if body.__dict__.get('targets') is not None:
-                    target = get_target(body)
-                else:
-                    target = None
+        library_references, path = [], deque()
+        for body in node.body:
+            # Get target name if possible
+            if body.__dict__.get('targets') is not None:
+                target = get_target(body)
+            else:
+                target = None
 
-                # Get reference if possible
-                if body.__dict__.get('value') is not None:
-                    reference, path = get_leaf_attribute(body)
-                else:
-                    reference = None
+            # Get reference if possible
+            if body.__dict__.get('value') is not None:
+                reference, path = get_leaf_attribute(body)
+            else:
+                reference = None
 
-                try:
-                    # Create mapping between library and the assigned target if reference is from a library
-                    if reference is not None and target is not None:
-                        library = self.imports[reference]
-                        self.imports[target] = library
-                    # Look up assignment value if it exists
-                    elif reference is not None:
-                        library = self.imports[reference]
-                    # Look up target if it exists
-                    elif target is not None:
-                        library = self.imports[target]
-                    else:
-                        continue
-                except:
+            try:
+                # Create mapping between library and the assigned target if reference is from a library
+                if reference is not None and target is not None:
+                    library = self.imports[reference]
+                    self.imports[target] = library
+                # Look up assignment value if it exists
+                elif reference is not None:
+                    library = self.imports[reference]
+                # Look up target if it exists
+                elif target is not None:
+                    library = self.imports[target]
+                else:
                     continue
-                path.appendleft(library)
-                library_path = ".".join(path)
-                library_references.append(library_path)
+            except:
+                continue
+            path.appendleft(library)
+            library_path = ".".join(path)
+            library_references.append(library_path)
 
         if len(library_references) > 0:
             self.method_libraries.append(
@@ -154,7 +152,7 @@ class LibraryExtractor():
             return
         nodes = ast.walk(root)
         imports = get_imports(nodes)
-        nodeVisitor = NodeVisitor(fname, imports, args.filters)
+        nodeVisitor = NodeVisitor(fname, imports)
         for node in ast.iter_child_nodes(root):
             nodeVisitor.visit(node)
 
@@ -164,7 +162,7 @@ class LibraryExtractor():
 
     def extract(self):
         projects = glob.glob(self.args.directory+'/**/*.py', recursive=True)
-        with tqdm(total=len(projects), unit=' Files', desc='Extracting libraries from files') as pbar:
+        with tqdm(total=len(projects), unit=' Files', desc='Extracting methods from files') as pbar:
             with ThreadPoolExecutor(max_workers=10) as executor:
                 tasks = {executor.submit(
                     self.extract_libraries, file): file for file in projects}
@@ -180,12 +178,10 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-d", "--directory", dest="directory", type=str,
                         help="The directory of the projects to extract libraries from", required=True)
-    parser.add_argument("-o", "--output", dest="output", type=str, default="./code2lib.json",
+    parser.add_argument("-o", "--output", dest="output", type=str, default="./libraries.json",
                         help="The output filepath", required=False)
     parser.add_argument("-v", "--verbose", dest="verbose", type=bool, default=False,
                         help="Increase verbosity of output", required=False)
-    parser.add_argument("-f", "--filters", dest="filters", type=bool, default=['predict', 'save', 'train', 'transform'],
-                        help="A comma separated list of method names to filter by", required=False)
 
     args = parser.parse_args()
     libraryExtractor = LibraryExtractor(args)
