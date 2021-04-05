@@ -138,6 +138,7 @@ class Code2VecModel(Code2VecModelBase):
         with open('log.txt', 'w') as log_output_file:
             if self.config.EXPORT_CODE_VECTORS:
                 code_vectors_file = open(self.config.TEST_DATA_PATH + '.vectors', 'w')
+                predicted_names_file = open(self.config.TEST_DATA_PATH + '.predicted_names', 'w')
             total_predictions = 0
             total_prediction_batches = 0
             subtokens_evaluation_metric = SubtokensEvaluationMetric(
@@ -175,6 +176,7 @@ class Code2VecModel(Code2VecModelBase):
                     total_prediction_batches += 1
                     if self.config.EXPORT_CODE_VECTORS:
                         self._write_code_vectors(code_vectors_file, code_vectors)
+                        self._write_predicted_names(predicted_names_file, top_words)
                     if total_prediction_batches % self.config.NUM_BATCHES_TO_LOG_PROGRESS == 0:
                         elapsed = time.time() - start_time
                         # start_time = time.time()

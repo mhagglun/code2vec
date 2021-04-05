@@ -112,6 +112,10 @@ class Code2VecModelBase(abc.ABC):
         for vec in code_vectors:
             file.write(' '.join(map(str, vec)) + '\n')
 
+    def _write_predicted_names(self, file, predicted_names):
+        for name in predicted_names:
+            file.write(' '.join(map(str, name)) + '\n')
+
     def _get_attention_weight_per_context(
             self, path_source_strings: Iterable[str], path_strings: Iterable[str], path_target_strings: Iterable[str],
             attention_weights: Iterable[float]) -> Dict[Tuple[str, str, str], float]:
