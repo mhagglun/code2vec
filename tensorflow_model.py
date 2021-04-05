@@ -87,11 +87,12 @@ class Code2VecModel(Code2VecModelBase):
                     #    "shuffle_batch/random_shuffle_queue_Size:0"))
                     sum_loss = 0
                     multi_batch_start_time = time.time()
-                if batch_num % num_batches_to_save_and_eval == 0:
+                if batch_num % self.config.NUM_TRAIN_BATCHES_TO_EVALUATE == 0:
                     epoch_num = int((batch_num / num_batches_to_save_and_eval) * self.config.SAVE_EVERY_EPOCHS)
-                    model_save_path = self.config.MODEL_SAVE_PATH + '_iter' + str(epoch_num)
-                    self.save(model_save_path)
-                    self.log('Saved after %d epochs in: %s' % (epoch_num, model_save_path))
+                    if epoch_num % self.config.SAVE_EVERY_EPOCHS == 0:
+                        model_save_path = self.config.MODEL_SAVE_PATH + '_iter' + str(epoch_num)
+                        self.save(model_save_path)
+                        self.log('Saved after %d epochs in: %s' % (epoch_num, model_save_path))
                     evaluation_results = self.evaluate()
                     evaluation_results_str = (str(evaluation_results).replace('topk', 'top{}'.format(
                         self.config.TOP_K_WORDS_CONSIDERED_DURING_PREDICTION)))
