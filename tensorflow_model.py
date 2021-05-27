@@ -91,14 +91,12 @@ class Code2VecModel(Code2VecModelBase):
                     #    "shuffle_batch/random_shuffle_queue_Size:0"))
                     sum_loss = 0
                     multi_batch_start_time = time.time()
-                if batch_num % num_batches_to_save_and_eval == 0:
-                    epoch_num = int(
-                        (batch_num / num_batches_to_save_and_eval) * self.config.SAVE_EVERY_EPOCHS)
-                    model_save_path = self.config.MODEL_SAVE_PATH + \
-                        '_iter' + str(epoch_num)
-                    self.save(model_save_path)
-                    self.log('Saved after %d epochs in: %s' %
-                             (epoch_num, model_save_path))
+                if batch_num % self.config.NUM_TRAIN_BATCHES_TO_EVALUATE == 0:
+                    epoch_num = int((batch_num / num_batches_to_save_and_eval) * self.config.SAVE_EVERY_EPOCHS)
+                    if epoch_num % self.config.SAVE_EVERY_EPOCHS == 0:
+                        model_save_path = self.config.MODEL_SAVE_PATH + '_iter' + str(epoch_num)
+                        self.save(model_save_path)
+                        self.log('Saved after %d epochs in: %s' % (epoch_num, model_save_path))
                     evaluation_results = self.evaluate()
                     evaluation_results_str = (str(evaluation_results).replace('topk', 'top{}'.format(
                         self.config.TOP_K_WORDS_CONSIDERED_DURING_PREDICTION)))
@@ -151,6 +149,8 @@ class Code2VecModel(Code2VecModelBase):
             if self.config.EXPORT_CODE_VECTORS:
                 code_vectors_file = open(
                     self.config.TEST_DATA_PATH + '.vectors', 'w')
+                predicted_names_file = open(
+                    self.config.TEST_DATA_PATH + '.predicted_names', 'w')
             total_predictions = 0
             total_prediction_batches = 0
             subtokens_evaluation_metric = SubtokensEvaluationMetric(
@@ -194,6 +194,7 @@ class Code2VecModel(Code2VecModelBase):
                     if self.config.EXPORT_CODE_VECTORS:
                         self._write_code_vectors(
                             code_vectors_file, code_vectors)
+                        self._write_predicted_names(predicted_names_file, top_words)
                     if total_prediction_batches % self.config.NUM_BATCHES_TO_LOG_PROGRESS == 0:
                         elapsed = time.time() - start_time
                         # start_time = time.time()
@@ -206,6 +207,7 @@ class Code2VecModel(Code2VecModelBase):
                 str(topk_accuracy_evaluation_metric.topk_correct_predictions) + '\n')
         if self.config.EXPORT_CODE_VECTORS:
             code_vectors_file.close()
+            predicted_names_file.close()
 
         elapsed = int(time.time() - eval_start_time)
         self.log("Evaluation time: %sH:%sM:%sS" %

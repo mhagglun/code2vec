@@ -18,25 +18,21 @@
 #   recommended to use a multi-core machine for the preprocessing 
 #   step and set this value to the number of cores.
 # PYTHON - python3 interpreter alias.
-# DATASET_NAME=tokens
-# MAX_TOKENS=6686
-# TOKEN_VOCAB_SIZE=406192
-# TARGET_VOCAB_SIZE=582470
-
-DATASET_NAME=libraries
-MAX_TOKENS=1457
-TOKEN_VOCAB_SIZE=126797
-TARGET_VOCAB_SIZE=465976
-
+DATASET_NAME=identifiers
+LANG=py
+MAX_TOKENS=200
+TOKEN_VOCAB_SIZE=584408
+TARGET_VOCAB_SIZE=282108
 PYTHON=python3
+JAVA=java
 ###########################################################
 
 mkdir -p data
 mkdir -p data/${DATASET_NAME}
 
-TRAIN_DATA_FILE=../data/${DATASET_NAME}/train.csv
-VAL_DATA_FILE=../data/${DATASET_NAME}/test.csv
-TEST_DATA_FILE=../data/${DATASET_NAME}/test.csv
+TRAIN_DATA_FILE=data/${DATASET_NAME}/train.csv
+VAL_DATA_FILE=data/${DATASET_NAME}/val.csv
+TEST_DATA_FILE=data/${DATASET_NAME}/test.csv
 
 
 TARGET_HISTOGRAM_FILE=data/${DATASET_NAME}/${DATASET_NAME}.histo.tgt.c2v
@@ -44,13 +40,13 @@ ORIGIN_HISTOGRAM_FILE=data/${DATASET_NAME}/${DATASET_NAME}.histo.ori.c2v
 
 echo "Creating histograms from the training data"
 cat ${TRAIN_DATA_FILE} | cut -d' ' -f1 | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${TARGET_HISTOGRAM_FILE}
-cat ${TRAIN_DATA_FILE} | cut -d' ' -f2- | tr ' ' '\n' | cut -d',' -f1- | tr ',' '\n' | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${ORIGIN_HISTOGRAM_FILE}
-
+cat ${TRAIN_DATA_FILE} | cut -d' ' -f2- | tr ' ' '\n' | cut -d',' -f1,3 | tr ',' '\n' | awk '{n[$0]++} END {for (i in n) print i,n[i]}' > ${ORIGIN_HISTOGRAM_FILE}
 ${PYTHON} preprocess.py --train_data ${TRAIN_DATA_FILE} --test_data ${TEST_DATA_FILE} --val_data ${VAL_DATA_FILE} \
-  --max_tokens ${MAX_TOKENS} --token_vocab_size ${TOKEN_VOCAB_SIZE} --target_vocab_size ${TARGET_VOCAB_SIZE}\
+  --max_tokens ${MAX_TOKENS} --token_vocab_size ${TOKEN_VOCAB_SIZE} --target_vocab_size ${TARGET_VOCAB_SIZE} \
   --word_histogram ${ORIGIN_HISTOGRAM_FILE} --target_histogram ${TARGET_HISTOGRAM_FILE} --output_name data/${DATASET_NAME}/${DATASET_NAME}
 
 # If all went well, the raw data files can be deleted, because preprocess.py creates new files 
 # with truncated and padded number of paths for each example.
 # rm -rf ${TRAIN_DATA_FILE} ${VAL_DATA_FILE} ${TEST_DATA_FILE} ${TARGET_HISTOGRAM_FILE} ${ORIGIN_HISTOGRAM_FILE} \
 #   ${PATH_HISTOGRAM_FILE}
+

@@ -32,11 +32,14 @@ def process_file(file_path, data_file_role, dataset_name, token_to_count, max_to
                 parts = line.rstrip('\n').split(' ')
                 target_name = parts[0]
                 tokens = parts[1].split(',')
-                # TODO: Add sampling if len(tokens) > max_tokens
 
+                sum_total += len(tokens)
                 if len(tokens) == 0:
                     empty += 1
                     continue
+
+                if len(tokens) > max_tokens:
+                    tokens = random.sample(tokens, max_tokens)
 
                 sum_sampled += len(tokens)
 

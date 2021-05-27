@@ -44,13 +44,13 @@ class Code2VecModel(Code2VecModelBase):
         #     (self.config.MAX_CONTEXTS,), dtype=tf.int32)
         # context_valid_mask = Input((self.config.MAX_CONTEXTS,))
 
-        # Each input is a sequence of libraries
-        libraries_input = Input((self.config.MAX_LIBRARIES,), dtype=tf.int32)
-        library_valid_mask = Input((self.config.MAX_LIBRARIES,))
+        # Each input is a sequence of tokens
+        tokens_input = Input((self.config.MAX_TOKENS,), dtype=tf.int32)
+        token_valid_mask = Input((self.config.MAX_TOKENS,))
 
         # Input
-        embedded_libraries = Embedding(
-            self.vocabs.library_vocab.size, self.config.DEFAULT_EMBEDDINGS_SIZE, name='library_embedding')(libraries_input)
+        embedded_tokens = Embedding(
+            self.vocabs.token_vocab.size, self.config.DEFAULT_EMBEDDINGS_SIZE, name='token_embedding')(tokens_input)
 
         # Input paths are indexes, we embed these here.
         # paths_embedded = Embedding(
@@ -65,23 +65,23 @@ class Code2VecModel(Code2VecModelBase):
         # `Context` is a concatenation of the 2 terminals & path embedding.
         # Each context is a vector of size 3 * EMBEDDINGS_SIZE.
         # context_embedded = Concatenate()([path_source_token_embedded, paths_embedded, path_target_token_embedded])
-        library_embedded = Dropout(
-            1 - self.config.DROPOUT_KEEP_RATE)(embedded_libraries)
+        token_embedded = Dropout(
+            1 - self.config.DROPOUT_KEEP_RATE)(embedded_tokens)
 
         # Lets get dense: Apply a dense layer for each context vector (using same weights for all of the context).
-        library_after_dense = TimeDistributed(
-            Dense(self.config.DEFAULT_EMBEDDINGS_SIZE, use_bias=False, activation='tanh'))(library_embedded)
+        token_after_dense = TimeDistributed(
+            Dense(self.config.DEFAULT_EMBEDDINGS_SIZE, use_bias=False, activation='tanh'))(token_embedded)
 
         # The final code vectors are received by applying attention to the "densed" context vectors.
         code_vectors, attention_weights = AttentionLayer(name='attention')(
-            [library_after_dense, library_valid_mask])
+            [token_after_dense, token_valid_mask])
 
         # "Decode": Now we use another dense layer to get the target word embedding from each code vector.
         target_index = Dense(
             self.vocabs.target_vocab.size, use_bias=False, activation='softmax', name='target_index')(code_vectors)
 
         # Wrap the layers into a Keras model, using our subtoken-metrics and the CE loss.
-        inputs = [libraries_input, library_valid_mask]
+        inputs = [tokens_input, token_valid_mask]
         self.keras_train_model = keras.Model(
             inputs=inputs, outputs=target_index)
 
@@ -238,7 +238,7 @@ class Code2VecModel(Code2VecModelBase):
 
             # calculate the attention weight for each context
             attention_per_context = self._get_attention_weight_per_context(
-                libraries_strings=input_row.libraries_strings,
+                token_strings=input_row.token_strings,
                 attention_weights=prediction_results.attention_weights
             )
 
@@ -424,23 +424,23 @@ class _KerasModelInputTensorsFormer(ModelInputTensorsFormer):
         self.estimator_action = estimator_action
 
     def to_model_input_form(self, input_tensors: ReaderInputTensors):
-        inputs = (input_tensors.library_indices,
-                  input_tensors.valid_library_mask)
+        inputs = (input_tensors.token_indices,
+                  input_tensors.token_valid_mask)
         if self.estimator_action.is_train:
             targets = input_tensors.target_index
         else:
             targets = {'target_index': input_tensors.target_index,
                        'target_string': input_tensors.target_string}
         if self.estimator_action.is_predict:
-            inputs += (input_tensors.library_indices)
+            inputs += (input_tensors.token_indices)
         return inputs, targets
 
     def from_model_input_form(self, input_row) -> ReaderInputTensors:
         inputs, targets = input_row
         return ReaderInputTensors(
-            library_indices=inputs[0],
-            valid_library_mask=inputs[1],
-            libraries_strings=inputs[2] if self.estimator_action.is_predict else None,
+            token_indices=inputs[0],
+            token_valid_mask=inputs[1],
+            token_strings=inputs[2] if self.estimator_action.is_predict else None,
             target_index=targets if self.estimator_action.is_train else targets['target_index'],
             target_string=targets['target_string'] if not self.estimator_action.is_train else None
         )
