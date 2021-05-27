@@ -12,9 +12,9 @@ MAX_CONTEXTS = 200
 
 def create_dataset(args):
 
-    shutil.rmtree(f'{args.output}/train.csv')
-    shutil.rmtree(f'{args.output}/val.csv')
-    shutil.rmtree(f'{args.output}/test.csv')
+    # shutil.rmtree(f'{args.output}/train.csv')
+    # shutil.rmtree(f'{args.output}/val.csv')
+    # shutil.rmtree(f'{args.output}/test.csv')
 
     df = pd.read_csv(args.filepath, delimiter=' ', header=None, names=np.arange(0, MAX_CONTEXTS+1), iterator=True, chunksize=10000)
     train_size, val_size, test_size = 0.9, 0.05, 0.05
